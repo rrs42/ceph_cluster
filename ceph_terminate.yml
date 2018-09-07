@@ -1,0 +1,17 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  become: no
+
+
+  tasks:
+    - ec2_instance_facts:
+        filters:
+          "tag:Cluster": ["ceph"]
+      register: results
+
+    - ec2:
+        instance_id: "{{ results.instances | map(attribute='instance_id') | list }}"
+        state: absent

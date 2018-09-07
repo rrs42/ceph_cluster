@@ -1,0 +1,14 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+{% for host in groups['mon'] %}
+{{ hostvars[host].private_ip_address }}     mon{{ loop.index }}
+{% endfor %}
+{% for host in groups['osd'] %}
+{{ hostvars[host].private_ip_address }}     osd{{ loop.index }}
+{% endfor %}
+{% for host in groups['client'] %}
+{{ hostvars[host].private_ip_address }}     client
+{% endfor %}
+{% for host in groups['admin'] %}
+{{ hostvars[host].private_ip_address }}     ceph-admin
+{% endfor %}

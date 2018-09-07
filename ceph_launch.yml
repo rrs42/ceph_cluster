@@ -1,0 +1,132 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tags:
+    - always
+
+  vars:
+    cluster_name: "ceph"
+    key_name: "n62-test"
+    instance_type: "t2.large"
+    security_groups:
+      - sg-21649b45
+      - sg-5d4daf39
+
+  tasks:
+    - name: Find VPC
+      ec2_vpc_net_facts:
+        filters:
+          "tag:Name": N62
+      register: results
+    - set_fact:
+        vpc: "{{ (results.vpcs | first).id  }}"
+
+    - debug:
+        var: results
+
+    - debug:
+        var: vpc
+
+    - name: Find subnet
+      ec2_vpc_subnet_facts:
+        filters:
+          vpc-id: "{{ vpc  }}"
+          "tag:Name": CephStorage
+      register: results
+    - set_fact:
+        ceph_subnet: "{{ (results.subnets | first).id }}"
+
+    - debug:
+        var: results
+    - debug:
+        var: ceph_subnet
+
+
+    - name: Query AMI ID
+      ec2_ami_facts:
+        filters:
+          name: "spel-minimal-centos-7-hvm-*"
+        #owner: self
+      register: results
+    - set_fact:
+        ami: "{{ (results.images | sort(attribute='creation_date') | last).image_id  }}"
+    - debug:
+        var: ami
+
+ 
+    - name: Launch Admin Instance
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-admin
+          Cluster: "{{cluster_name}}"
+      register: results
+
+    - debug:
+        var: results
+
+    - name: Launch monitor Instance
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-mon
+          Cluster: "{{cluster_name}}"
+      register: results
+
+    - debug:
+        var: results
+
+    - name: Launch OSD Instances
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-osd
+          Cluster: "{{cluster_name}}"
+        count_tag:
+          name: ceph-osd
+        exact_count: 3
+        volumes:
+          - device_name: /dev/sdb
+            volume_type: io1
+            iops: 1000
+            volume_size: 400
+            delete_on_termination: yes
+      register: results
+
+    - debug:
+        var: results
+
+    - name: Launch client Instance
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-client
+          Cluster: "{{cluster_name}}"
+      register: results
+
+
+    - debug:
+        var: results
