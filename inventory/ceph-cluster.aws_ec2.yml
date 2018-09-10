@@ -14,24 +14,6 @@ groups:
   ceph: "tags['Name'].startswith('ceph')"
   osd: "tags['Name'].endswith('osd')"
   mon: "tags['Name'].endswith('mon')"
-  admin: "tags['Name'].endswith('admin')"
+  mds: "tags['Name'].endswith('mds')"
+  rgw: "tags['Name'].endswith('rgw')"
   client: "tags['Name'].endswith('client')"
-
-compose:
-  gpfs_role: 'tags["gpfs:role"]'
-  gpfs_license: 'tags["gpfs:license"]'
-
-#keyed_groups:
-#  - prefix: 'role'
-#    key: 'tags["ansible:role"]'
-#    value:
-#      "Name": "Test"
-
-# keyed_groups:
-  # - prefix: arch
-  #   key: 'architecture'
-  #   value: 'x86_64'
-  # - prefix: tag
-  #   key: tags
-  #   value: 
-  #     "Name": "Test"

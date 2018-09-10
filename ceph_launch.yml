@@ -56,23 +56,6 @@
     - debug:
         var: ami
 
- 
-    - name: Launch Admin Instance
-      ec2:
-        key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
-        group_id: "{{ security_groups  }}"
-        instance_type: "{{  instance_type  }}"
-        image: "{{ami}}"
-        wait: yes
-        instance_tags:
-          Name: ceph-admin
-          Cluster: "{{cluster_name}}"
-      register: results
-
-    - debug:
-        var: results
-
     - name: Launch monitor Instance
       ec2:
         key_name: "{{ key_name }}"
@@ -84,6 +67,9 @@
         instance_tags:
           Name: ceph-mon
           Cluster: "{{cluster_name}}"
+        count_tag: 
+          Name: ceph-mon
+        exact_count: 1
       register: results
 
     - debug:
@@ -101,14 +87,52 @@
           Name: ceph-osd
           Cluster: "{{cluster_name}}"
         count_tag:
-          name: ceph-osd
-        exact_count: 3
+          Name: ceph-osd
+        exact_count: 7
         volumes:
           - device_name: /dev/sdb
             volume_type: io1
             iops: 1000
             volume_size: 400
             delete_on_termination: yes
+      register: results
+
+    - debug:
+        var: results
+
+    - name: Launch RGW Instances
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-rgw
+          Cluster: "{{cluster_name}}"
+        count_tag:
+          Name: ceph-rgw
+        exact_count: 3
+      register: results
+
+    - debug:
+        var: results
+
+    - name: Launch MDS Instances
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-mds
+          Cluster: "{{cluster_name}}"
+        count_tag:
+          Name: ceph-mds
+        exact_count: 1
       register: results
 
     - debug:
@@ -125,6 +149,9 @@
         instance_tags:
           Name: ceph-client
           Cluster: "{{cluster_name}}"
+        count_tag:
+          Nmae: ceph-client
+        exact_count: 1
       register: results
 
 
