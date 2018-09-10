@@ -4,33 +4,37 @@
     become: yes
 
     tasks:
-    - user:
-        name: cephuser
-        shell: /bin/bash
-    - copy:
-        content: "cephuser ALL = (root) NOPASSWD:ALL"
-        dest: /etc/sudoers.d/cephuser
-        mode: '0440'
-    - selinux:
-        state: disabled
-    - authorized_key:
-        user: cephuser
-        key: "{{ lookup('file', 'cephuser.key.pub') }}"
-    - copy:
-        src: cephuser.key
-        dest: /home/cephuser/.ssh/cephuser.key
-        mode: '0400'
-        owner: cephuser
-        group: cephuser
-    - copy:
-        src: ssh_config
-        dest: /home/cephuser/.ssh/config
-        mode: '0600'
-        owner: cephuser
-        group: cephuser
-    - template:
-        src: hosts.j2
-        dest: /etc/hosts
+      - file:
+          path: /etc/ceph
+          state: directory
+
+    # - user:
+    #     name: cephuser
+    #     shell: /bin/bash
+    # - copy:
+    #     content: "cephuser ALL = (root) NOPASSWD:ALL"
+    #     dest: /etc/sudoers.d/cephuser
+    #     mode: '0440'
+    # - selinux:
+    #     state: disabled
+    # - authorized_key:
+    #     user: cephuser
+    #     key: "{{ lookup('file', 'cephuser.key.pub') }}"
+    # - copy:
+    #     src: cephuser.key
+    #     dest: /home/cephuser/.ssh/cephuser.key
+    #     mode: '0400'
+    #     owner: cephuser
+    #     group: cephuser
+    # - copy:
+    #     src: ssh_config
+    #     dest: /home/cephuser/.ssh/config
+    #     mode: '0600'
+    #     owner: cephuser
+    #     group: cephuser
+    # - template:
+    #     src: hosts.j2
+    #     dest: /etc/hosts
 
 - hosts: admin
   become: yes

@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+from subprocess import check_output
+import json
+import sys
+import os
+
+
+def get_inventory():
+    inventory_json = check_output(['ansible-inventory', '--list'])
+    inventory = json.loads(inventory_json)
+    return inventory
+
+
+def do_ssh(host):
+    os.execlp('ssh', 'ssh', '-t', '-F', './ssh.cfg',
+              '-l', 'maintuser', host, 'sudo', '-i')
+
+
+def select_host(hosts):
+    while 1:
+        for num, host in enumerate(hosts):
+            print(f'[{num}] {host}')
+
+        print(">", end='')
+        host = int(input())
+        print(host, type(host))
+        if host >= 0 and host < len(hosts):
+            return hosts[host]
+
+
+def main():
+    inventory = get_inventory()
+    group = sys.argv[1]
+
+    if len(inventory[group]['hosts']) == 1:
+        do_ssh(inventory[group]['hosts'][0])
+    else:
+        host = select_host(inventory[group]['hosts'])
+        do_ssh(host)
+
+
+if __name__ == "__main__":
+    main()
