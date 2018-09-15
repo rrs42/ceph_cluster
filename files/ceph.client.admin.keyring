@@ -1,0 +1,6 @@
+[client.admin]
+	key = AQB+Kphbu5ZkERAA1d9D3/i+5MnxtFEeSsPOuw==
+	auid = 0
+	caps mds = "allow"
+	caps mon = "allow *"
+	caps osd = "allow *"
