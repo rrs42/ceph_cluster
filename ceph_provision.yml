@@ -1,81 +1,54 @@
 #!/usr/bin/env ansible-playbook
 ---
--   hosts: ceph
-    become: yes
-
-    tasks:
-      - file:
-          path: /etc/ceph
-          state: directory
-
-    # - user:
-    #     name: cephuser
-    #     shell: /bin/bash
-    # - copy:
-    #     content: "cephuser ALL = (root) NOPASSWD:ALL"
-    #     dest: /etc/sudoers.d/cephuser
-    #     mode: '0440'
-    # - selinux:
-    #     state: disabled
-    # - authorized_key:
-    #     user: cephuser
-    #     key: "{{ lookup('file', 'cephuser.key.pub') }}"
-    # - copy:
-    #     src: cephuser.key
-    #     dest: /home/cephuser/.ssh/cephuser.key
-    #     mode: '0400'
-    #     owner: cephuser
-    #     group: cephuser
-    # - copy:
-    #     src: ssh_config
-    #     dest: /home/cephuser/.ssh/config
-    #     mode: '0600'
-    #     owner: cephuser
-    #     group: cephuser
-    # - template:
-    #     src: hosts.j2
-    #     dest: /etc/hosts
-
-- hosts: admin
+- name: ceph cluster host prep
+  hosts: ceph
   become: yes
 
-  tasks:
-    - firewalld:
-        zone: public
-        port: 80/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
-    - firewalld:
-        zone: public
-        port: 2003/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
-    - firewalld:
-        zone: public
-        port: 4005-4006/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
+  handlers:
+    - name: reboot
+      shell: sleep 5 && reboot
+      async: 1
+      poll: 0
+      ignore_errors: yes
+      notify: wait for boot
+    - name: wait for boot
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
 
-- hosts: mon
-  become: yes
-  tasks:
-    - firewalld:
-        zone: public
-        port: 6789/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
+  roles:
+    - aws_ntp
+    - fips
+    - firewall
 
-- hosts: osd
-  become: yes
+  post_tasks:
+    - name: Chek for epel repo
+      shell: rc=$(yum-config-manager | egrep "\[epel\]"); if [ -z "$rc" ]; then echo "not enabled"; else echo "enabled"; fi
+      register: result
+      ignore_errors: yes
+    - name: Enable epel repo
+      command: yum-config-manager --enable epel
+      when: result.stdout == "not enabled"
+    - name: Install ceph repo pkg
+      yum:
+        name: centos-release-ceph-luminous
+        state: present
+
+- name: install ceph base
+  hosts: mon:osd:mds
+  gather_facts: no
 
   tasks:
-    - firewalld:
-        zone: public
-        port: 6800-7300/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
+    - yum:
+        name: ceph
+        state: present
+
+- name:
+  hosts: rgw
+  gather_facts: no
+  tasks:
+    - yum:
+      name: ceph-radosgw
+      state: present

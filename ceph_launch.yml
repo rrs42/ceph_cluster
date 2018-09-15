@@ -24,12 +24,6 @@
     - set_fact:
         vpc: "{{ (results.vpcs | first).id  }}"
 
-    - debug:
-        var: results
-
-    - debug:
-        var: vpc
-
     - name: Find subnet
       ec2_vpc_subnet_facts:
         filters:
@@ -39,12 +33,6 @@
     - set_fact:
         ceph_subnet: "{{ (results.subnets | first).id }}"
 
-    - debug:
-        var: results
-    - debug:
-        var: ceph_subnet
-
-
     - name: Query AMI ID
       ec2_ami_facts:
         filters:
@@ -53,8 +41,6 @@
       register: results
     - set_fact:
         ami: "{{ (results.images | sort(attribute='creation_date') | last).image_id  }}"
-    - debug:
-        var: ami
 
     - name: Launch monitor Instance
       ec2:
@@ -67,13 +53,10 @@
         instance_tags:
           Name: ceph-mon
           Cluster: "{{cluster_name}}"
-        count_tag: 
+        count_tag:
           Name: ceph-mon
-        exact_count: 1
+        exact_count: 3
       register: results
-
-    - debug:
-        var: results
 
     - name: Launch OSD Instances
       ec2:
@@ -88,7 +71,7 @@
           Cluster: "{{cluster_name}}"
         count_tag:
           Name: ceph-osd
-        exact_count: 7
+        exact_count: 8
         volumes:
           - device_name: /dev/sdb
             volume_type: io1
@@ -96,9 +79,6 @@
             volume_size: 400
             delete_on_termination: yes
       register: results
-
-    - debug:
-        var: results
 
     - name: Launch RGW Instances
       ec2:
@@ -113,11 +93,8 @@
           Cluster: "{{cluster_name}}"
         count_tag:
           Name: ceph-rgw
-        exact_count: 3
+        exact_count: 2
       register: results
-
-    - debug:
-        var: results
 
     - name: Launch MDS Instances
       ec2:
@@ -135,9 +112,6 @@
         exact_count: 1
       register: results
 
-    - debug:
-        var: results
-
     - name: Launch client Instance
       ec2:
         key_name: "{{ key_name }}"
@@ -153,7 +127,3 @@
           Nmae: ceph-client
         exact_count: 1
       register: results
-
-
-    - debug:
-        var: results
