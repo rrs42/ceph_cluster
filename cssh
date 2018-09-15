@@ -24,7 +24,6 @@ def select_host(hosts):
 
         print(">", end='')
         host = int(input())
-        print(host, type(host))
         if host >= 0 and host < len(hosts):
             return hosts[host]
 
