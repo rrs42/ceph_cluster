@@ -4,19 +4,19 @@
   hosts: ceph
   become: yes
 
-  handlers:
-    - name: reboot
-      shell: sleep 5 && reboot
-      async: 1
-      poll: 0
-      ignore_errors: yes
-      notify: wait for boot
-    - name: wait for boot
-      wait_for_connection:
-        connect_timeout: 20
-        sleep: 5
-        delay: 5
-        timeout: 300
+  # handlers:
+  #   - name: reboot
+  #     shell: sleep 5 && reboot
+  #     async: 1
+  #     poll: 0
+  #     ignore_errors: yes
+  #     notify: wait for boot
+  #   - name: wait for boot
+  #     wait_for_connection:
+  #       connect_timeout: 20
+  #       sleep: 5
+  #       delay: 5
+  #       timeout: 300
 
   roles:
     - aws_ntp
@@ -25,7 +25,14 @@
 
   post_tasks:
     - name: Chek for epel repo
-      shell: rc=$(yum-config-manager | egrep "\[epel\]"); if [ -z "$rc" ]; then echo "not enabled"; else echo "enabled"; fi
+      shell: >
+        rc=$(yum-config-manager | egrep "\[epel\]");
+        if [ -z "$rc" ];
+        then
+          echo "not enabled";
+        else
+          echo "enabled";
+        fi
       register: result
       ignore_errors: yes
     - name: Enable epel repo
@@ -36,19 +43,66 @@
         name: centos-release-ceph-luminous
         state: present
 
+- name: Admin
+  hosts: admin
+  gather_facts: no
+  tasks:
+    - yum:
+        name: ceph-ansible
+        state: present
+    - user:
+        name: ceph
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        shell: /bin/bash
+      register: result
+    - set_fact:
+        ceph_ssh_pubkey: "{{ result.ssh_public_key }}"
+
+    - debug:
+        var: ceph_ssh_pubkey
+
+    - copy:
+        dest: /etc/sudoers.d/ceph
+        owner: root
+        group: root
+        mode: '0600'
+        content: "ceph ALL=(ALL:ALL) NOPASSWD:ALL"
+
+- name: Install ceph user
+  hosts: ceph:!admin
+  gather_facts: yes
+  tasks:
+    - debug:
+        var: hostvars[groups['admin'][0]]['ceph_ssh_pubkey']
+    - user:
+        name: ceph
+        shell: /bin/bash
+    - authorized_key:
+        user: ceph
+        state: present
+        key: "{{ hostvars[groups['admin'][0]]['ceph_ssh_pubkey'] }}"
+    - copy:
+        dest: /etc/sudoers.d/ceph
+        owner: root
+        group: root
+        mode: '0600'
+        content: "ceph ALL=(ALL:ALL) NOPASSWD:ALL"
+
 - name: install ceph base
   hosts: mon:osd:mds
   gather_facts: no
-
   tasks:
     - yum:
         name: ceph
         state: present
+    - user:
+        name: ceph
 
-- name:
+- name: RADOS gateway
   hosts: rgw
   gather_facts: no
   tasks:
     - yum:
-      name: ceph-radosgw
-      state: present
+        name: ceph-radosgw
+        state: present

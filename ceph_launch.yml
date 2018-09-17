@@ -42,6 +42,23 @@
     - set_fact:
         ami: "{{ (results.images | sort(attribute='creation_date') | last).image_id  }}"
 
+    - name: Launch admin Instance
+      ec2:
+        key_name: "{{ key_name }}"
+        vpc_subnet_id: "{{ ceph_subnet  }}"
+        group_id: "{{ security_groups  }}"
+        instance_type: "{{  instance_type  }}"
+        image: "{{ami}}"
+        wait: yes
+        instance_tags:
+          Name: ceph-admin
+          Cluster: "{{cluster_name}}"
+        count_tag:
+          Name: ceph-admin
+        exact_count: 1
+        instance_profile_name: CI-vpc-N62
+      register: results
+
     - name: Launch monitor Instance
       ec2:
         key_name: "{{ key_name }}"
@@ -74,6 +91,16 @@
         exact_count: 8
         volumes:
           - device_name: /dev/sdb
+            volume_type: io1
+            iops: 1000
+            volume_size: 400
+            delete_on_termination: yes
+          - device_name: /dev/sdc
+            volume_type: io1
+            iops: 1000
+            volume_size: 400
+            delete_on_termination: yes
+          - device_name: /dev/sdd
             volume_type: io1
             iops: 1000
             volume_size: 400

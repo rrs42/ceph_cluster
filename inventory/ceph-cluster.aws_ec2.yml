@@ -17,3 +17,4 @@ groups:
   mds: "tags['Name'].endswith('mds')"
   rgw: "tags['Name'].endswith('rgw')"
   client: "tags['Name'].endswith('client')"
+  admin: "tags['Name'].endswith('admin')"
