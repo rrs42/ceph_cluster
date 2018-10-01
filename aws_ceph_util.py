@@ -18,6 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--space', action='store_true')
     parser.add_argument('-n', '--newline', action='store_true')
     parser.add_argument('-o', '--one-match', action='store_true')
+    parser.add_argument('-d', '--short', action='store_true')
 
     args, groups = parser.parse_known_args()
 
@@ -25,6 +26,9 @@ if __name__ == '__main__':
 
     for g in groups:
         hosts = sorted(inv[g]["hosts"])
+
+        if args.short:
+            hosts = [h.split('.')[0] for h in hosts]
 
         if args.one_match:
             result = hosts[0]
