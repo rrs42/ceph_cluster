@@ -15,28 +15,38 @@ def get_ansible_inventory():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--space', action='store_true')
-    parser.add_argument('-n', '--newline', action='store_true')
-    parser.add_argument('-o', '--one-match', action='store_true')
-    parser.add_argument('-d', '--short', action='store_true')
 
-    args, groups = parser.parse_known_args()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-s', '--space', action='store_true',
+                       help="use space separator")
+    group.add_argument('-c', '--comma', action='store_true',
+                       help="use comma separator")
+    group.add_argument('-o', '--one-match',
+                       action='store_true', help="only print first match from each group")
+    parser.add_argument('-d', '--long', action='store_true',
+                        help="print long hostname (host.domain)")
+    parser.add_argument('groups', nargs="+",
+                        help="include these groups")
+
+    args = parser.parse_args()
 
     inv = get_ansible_inventory()
 
-    for g in groups:
+    for g in args.groups:
         hosts = sorted(inv[g]["hosts"])
 
-        if args.short:
+        if not args.long:
             hosts = [h.split('.')[0] for h in hosts]
+
+        sep = '\n'
+        if args.space:
+            sep = " "
+        elif args.comma:
+            sep = ","
 
         if args.one_match:
             result = hosts[0]
-        elif args.space:
-            result = " ".join(hosts)
-        elif args.newline:
-            result = "\n".join(hosts)
         else:
-            result = ",".join(hosts)
+            result = sep.join(hosts)
 
         print(result)
