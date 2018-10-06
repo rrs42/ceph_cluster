@@ -4,20 +4,6 @@
   hosts: ceph
   become: yes
 
-  # handlers:
-  #   - name: reboot
-  #     shell: sleep 5 && reboot
-  #     async: 1
-  #     poll: 0
-  #     ignore_errors: yes
-  #     notify: wait for boot
-  #   - name: wait for boot
-  #     wait_for_connection:
-  #       connect_timeout: 20
-  #       sleep: 5
-  #       delay: 5
-  #       timeout: 300
-
   roles:
     - aws_ntp
     - fips
@@ -108,3 +94,26 @@
     - yum:
         name: ceph-radosgw
         state: present
+
+- name: Install utils
+  hosts: admin
+  gather_facts: no
+  tasks:
+    - yum:
+        name:
+          - python-pip
+          - python-boto3
+          - ansible
+    - pip:
+        name: ceph-deploy
+    - copy:
+        src=aws_ceph_util.py
+        dest=/usr/local/bin/
+        mode=0755
+    - copy:
+        src=osd_cr_template.py
+        dest=/usr/local/bin/
+        mode=0755
+    - copy:
+        src=inventory
+        dest=/etc/ansible/
