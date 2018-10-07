@@ -29,6 +29,11 @@
       yum:
         name: centos-release-ceph-luminous
         state: present
+    - name: fixup cloudinit sudoers
+      lineinfile:
+        path: /etc/sudoers.d/90-cloud-init-users
+        regexp: '^maintuser ALL=\(root\) NOPASSWD:ALL$'
+        line: 'maintuser ALL=(ALL) NOPASSWD:ALL'
 
 - name: Admin
   hosts: admin
@@ -47,9 +52,6 @@
         state: present
         key: "{{ ceph_ssh_pubkey }}"
 
-    - debug:
-        var: ceph_ssh_pubkey
-
     - copy:
         dest: /etc/sudoers.d/ceph
         owner: root
@@ -61,8 +63,6 @@
   hosts: ceph:!admin
   gather_facts: yes
   tasks:
-    - debug:
-        var: hostvars[groups['admin'][0]]['ceph_ssh_pubkey']
     - user:
         name: ceph
         shell: /bin/bash
@@ -98,14 +98,19 @@
 - name: Install utils
   hosts: admin
   gather_facts: no
+  tags:
+    - utils
   tasks:
     - yum:
         name:
           - python-pip
           - python-boto3
           - ansible
+          - redis
     - pip:
-        name: ceph-deploy
+        name:
+          - ceph-deploy
+          - redis
     - copy:
         src=aws_ceph_util.py
         dest=/usr/local/bin/
@@ -117,3 +122,14 @@
     - copy:
         src=inventory
         dest=/etc/ansible/
+    - ini_file:
+        path: /etc/ansible/ansible.cfg
+        section: defaults
+        option: inventory
+        value: /etc/ansible/inventory/
+    - shell: "ssh-keyscan $(/usr/local/bin/aws_ceph_util.py ceph) >> ~/.ssh/known_hosts"
+      become_user: ceph
+    - shell: "ssh-keyscan $(/usr/local/bin/aws_ceph_util.py -d ceph) >> ~/.ssh/known_hosts"
+      become_user: ceph
+    - shell: "ssh-keyscan localhost >> ~/.ssh/known_hosts"
+      become_user: ceph
