@@ -11,9 +11,27 @@
     cluster_name: "ceph"
     key_name: "n62-test"
     instance_type: "t2.large"
+    osd_instance_type: "i3.large"
     security_groups:
       - sg-21649b45
       - sg-5d4daf39
+    # osd_volumes:
+    #   - device_name: /dev/sdb
+    #     volume_type: io1
+    #     iops: 1000
+    #     volume_size: 400
+    #     delete_on_termination: yes
+    #   - device_name: /dev/sdc
+    #     volume_type: io1
+    #     iops: 1000
+    #     volume_size: 400
+    #     delete_on_termination: yes
+    #   - device_name: /dev/sdd
+    #     volume_type: io1
+    #     iops: 1000
+    #     volume_size: 400
+    #     delete_on_termination: yes
+    osd_volumes: ~
 
   tasks:
     - name: Find VPC
@@ -32,6 +50,13 @@
       register: results
     - set_fact:
         ceph_subnet: "{{ (results.subnets | first).id }}"
+        ceph_subnets: "{{ (results.subnets|map(attribute='id'))|sort|list  }}"
+    - set_fact:
+        ceph_subnet_a: "{{ ceph_subnets[0] }}"
+        ceph_subnet_b: "{{ ceph_subnets[1] }}"
+
+    - debug:
+        var: ceph_subnet_a
 
     - name: Query AMI ID
       ec2_ami_facts:
@@ -45,14 +70,14 @@
     - name: Launch admin Instance
       ec2:
         key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
+        vpc_subnet_id: "{{ ceph_subnet_a  }}"
         group_id: "{{ security_groups  }}"
         instance_type: "{{  instance_type  }}"
         image: "{{ami}}"
         wait: yes
         instance_tags:
           Name: ceph-admin
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
           Name: ceph-admin
         exact_count: 1
@@ -62,81 +87,78 @@
     - name: Launch monitor Instance
       ec2:
         key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
+        vpc_subnet_id: "{{ item  }}"
         group_id: "{{ security_groups  }}"
         instance_type: "{{  instance_type  }}"
         image: "{{ami}}"
         wait: yes
         instance_tags:
           Name: ceph-mon
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
           Name: ceph-mon
-        exact_count: 3
+        exact_count: 2
+      loop:
+        - "{{ ceph_subnet_a }}"
+        - "{{ ceph_subnet_b }}"
       register: results
 
     - name: Launch OSD Instances
       ec2:
         key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
+        vpc_subnet_id: "{{ item  }}"
         group_id: "{{ security_groups  }}"
-        instance_type: "{{  instance_type  }}"
+        instance_type: "{{  osd_instance_type  }}"
         image: "{{ami}}"
         wait: yes
         instance_tags:
           Name: ceph-osd
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
           Name: ceph-osd
         exact_count: 8
-        volumes:
-          - device_name: /dev/sdb
-            volume_type: io1
-            iops: 1000
-            volume_size: 400
-            delete_on_termination: yes
-          - device_name: /dev/sdc
-            volume_type: io1
-            iops: 1000
-            volume_size: 400
-            delete_on_termination: yes
-          - device_name: /dev/sdd
-            volume_type: io1
-            iops: 1000
-            volume_size: 400
-            delete_on_termination: yes
+        volumes: "{{ osd_volumes }}"
+      loop:
+        - "{{ ceph_subnet_a }}"
+        - "{{ ceph_subnet_b }}"
       register: results
 
     - name: Launch RGW Instances
       ec2:
         key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
+        vpc_subnet_id: "{{ item  }}"
         group_id: "{{ security_groups  }}"
         instance_type: "{{  instance_type  }}"
         image: "{{ami}}"
         wait: yes
         instance_tags:
           Name: ceph-rgw
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
           Name: ceph-rgw
         exact_count: 2
+      loop:
+        - "{{ ceph_subnet_a }}"
+        - "{{ ceph_subnet_b }}"
       register: results
 
     - name: Launch MDS Instances
       ec2:
         key_name: "{{ key_name }}"
-        vpc_subnet_id: "{{ ceph_subnet  }}"
+        vpc_subnet_id: "{{ item  }}"
         group_id: "{{ security_groups  }}"
         instance_type: "{{  instance_type  }}"
         image: "{{ami}}"
         wait: yes
         instance_tags:
           Name: ceph-mds
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
           Name: ceph-mds
         exact_count: 1
+      loop:
+        - "{{ ceph_subnet_a }}"
+        - "{{ ceph_subnet_b }}"
       register: results
 
     - name: Launch client Instance
@@ -149,8 +171,11 @@
         wait: yes
         instance_tags:
           Name: ceph-client
-          Cluster: "{{cluster_name}}"
+          Cluster: "{{ cluster_name }}"
         count_tag:
-          Nmae: ceph-client
+          Name: ceph-client
         exact_count: 1
+      loop:
+        - "{{ ceph_subnet_a }}"
+        - "{{ ceph_subnet_b }}"
       register: results

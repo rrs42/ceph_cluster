@@ -76,6 +76,9 @@
         group: root
         mode: '0600'
         content: "ceph ALL=(ALL:ALL) NOPASSWD:ALL"
+    - yum:
+        name: ceph-common
+        state: present
 
 - name: install ceph base
   hosts: mon:osd:mds
